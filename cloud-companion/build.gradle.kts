@@ -1,7 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.getCurrentOperatingSystem
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   id("org.springframework.boot")
@@ -42,7 +41,7 @@ dependencies {
 
   implementation("commons-io:commons-io:2.11.0")
   implementation("org.apache.commons:commons-compress:1.21")
-  implementation("org.apache.tika:tika-core:1.27")
+  implementation("org.apache.tika:tika-core:2.1.0")
   // https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/org/jetbrains/pty4j/pty4j/
   implementation("org.jetbrains.pty4j:pty4j:0.11.5")
 
@@ -58,14 +57,14 @@ dependencies {
   testImplementation("io.projectreactor:reactor-test")
 }
 
-tasks.withType<KotlinCompile> {
+tasks.compileKotlin {
   kotlinOptions {
     freeCompilerArgs = listOf("-Xjsr305=strict")
     jvmTarget = "1.8"
   }
 }
 
-tasks.withType<Test> {
+tasks.test {
 
   // The tests are somehow broken on Windows. Especially the file-related
   // tests tend to fail deleting files. Maybe somewhere are leaking file
@@ -80,21 +79,64 @@ tasks.withType<Test> {
 }
 
 jib {
-  from {
-    //image = "replco/polygott:c82c08a720ba1fd537d4fba17eed883ab87c0fd7"
+  // Creating the full all-in-one image containing all compilers is hidden behind a build flag because
+  // the final image will be HUGE (~15GB). By default, this will build a minimal image based on
+  // adoptopenjdk:8-jre-hotspot. You can enable the all-in-one build by passing the
+  // "companion-build-aio" flag to gradle:
+  // ./gradlew :cloud-companion:jib[DockerBuild] -P companion-build-aio
+  val buildAio = project.hasProperty("companion-build-aio")
+  if (buildAio) {
+    project.logger.info("Build companion all-in-one image. Build might take while...")
   }
+
+  from {
+    image = if (buildAio) {
+      "docker.io/replco/polygott:9180d8b24b181125577e98a8f5418781e863e852"
+    } else {
+        // adoptopenjdk:8-jre-hotspot
+      "docker.io/library/adoptopenjdk@sha256:f89b4c0ee78145a575df40017b12003d86ed877c4a68bd063f7ca0221ff8643b"
+    }
+  }
+
   to {
     image = "ghcr.io/codefreak/codefreak-cloud-companion"
+
+    tags = if (buildAio) {
+      setOf("aio")
+    } else {
+      setOf("minimal")
+    }
   }
   container {
-    volumes = listOf(
-      "/code"
-    )
+    user = "1000:1000"
+    workingDirectory = "/home/runner"
     labels.put("org.opencontainers.image.source", "https://github.com/codefreak/codefreak")
+    environment = mapOf(
+      "HOME" to "" // this is set by the polygott base image but confuses the bash environment
+    )
+  }
+  // The files from src/main/jib are added by default.
+  // These files are there to harmonize the underlying image and ensure a user named "runner"
+  // is present with the uid:git 1000:1000; e.g. the user gets a default bash configuration.
+  extraDirectories {
+    permissions = mapOf(
+      "/etc/{passwd,group,shadow}" to "644"
+    )
   }
   pluginExtensions {
     pluginExtension {
       implementation = "com.google.cloud.tools.jib.gradle.extension.springboot.JibSpringBootExtension"
+    }
+    pluginExtension {
+      implementation = "com.google.cloud.tools.jib.gradle.extension.ownership.JibOwnershipExtension"
+      configuration( Action<com.google.cloud.tools.jib.gradle.extension.ownership.Configuration> {
+        rules {
+          rule {
+            glob = "{/home/runner,/home/runner/**}"
+            ownership = "1000:1000"
+          }
+        }
+      })
     }
   }
 }
