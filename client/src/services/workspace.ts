@@ -3,6 +3,7 @@ export enum WorkspaceTabType {
   EMPTY = 'empty',
   INSTRUCTIONS = 'instructions',
   SHELL = 'shell',
+  CONSOLE = 'console',
   EVALUATION = 'evaluation'
 }
 
@@ -89,6 +90,10 @@ class WorkspaceTabFactoryClass {
 
   ShellTab(): WorkspaceTab {
     return { type: WorkspaceTabType.SHELL }
+  }
+
+  ConsoleTab(): WorkspaceTab {
+    return { type: WorkspaceTabType.CONSOLE }
   }
 
   EvaluationTab(): WorkspaceTab {

@@ -6,7 +6,7 @@ import {
 } from '../services/codefreak-api'
 import useEvaluationStatus from '../hooks/useEvaluationStatus'
 import { isEvaluationInProgress } from '../services/evaluation'
-import { CaretRightOutlined } from '@ant-design/icons'
+import { DashboardOutlined } from '@ant-design/icons'
 
 interface StartEvaluationButtonProps extends ButtonProps {
   answerId: string
@@ -29,13 +29,13 @@ const StartEvaluationButton: React.FC<StartEvaluationButtonProps> = props => {
 
   return (
     <Button
-      icon={<CaretRightOutlined />}
+      icon={<DashboardOutlined />}
       onClick={start as () => void}
       loading={startResult.loading}
       disabled={isEvaluationInProgress(status)}
       {...restProps}
     >
-      Start Evaluation
+      Evaluate
     </Button>
   )
 }

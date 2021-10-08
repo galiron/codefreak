@@ -1,3 +1,4 @@
+import React from 'react'
 import { Tabs, Tooltip } from 'antd'
 import {
   extractRelativeFilePath,
@@ -15,11 +16,13 @@ import EvaluationTabPanel from './EvaluationTabPanel'
 import { noop } from '../../services/util'
 import EvaluationIndicator from '../EvaluationIndicator'
 import {
+  CaretRightOutlined,
   CodeOutlined,
   DashboardOutlined,
   FileTextOutlined,
   SolutionOutlined
 } from '@ant-design/icons'
+import ConsoleTabPanel from './ConsoleTabPanel'
 
 const getTabTitle = (
   type: WorkspaceTabType,
@@ -55,6 +58,12 @@ const getTabTitle = (
       return (
         <>
           <CodeOutlined /> Shell
+        </>
+      )
+    case WorkspaceTabType.CONSOLE:
+      return (
+        <>
+          <CaretRightOutlined /> Console
         </>
       )
     case WorkspaceTabType.EVALUATION:
@@ -94,7 +103,11 @@ const renderTab =
         content = <InstructionsTabPanel />
         break
       case WorkspaceTabType.SHELL:
+        // TODO make multiple shells possible
         content = <ShellTabPanel />
+        break
+      case WorkspaceTabType.CONSOLE:
+        content = <ConsoleTabPanel />
         break
       case WorkspaceTabType.EVALUATION:
         content = <EvaluationTabPanel />

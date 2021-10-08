@@ -6,13 +6,10 @@ import './WorkspacePage.less'
 import WorkspaceTabsWrapper from './WorkspaceTabsWrapper'
 import { useEffect, useState } from 'react'
 import { Col, Row } from 'antd'
-import { WorkspaceContext } from '../../hooks/workspace/useWorkspace'
-import { Client, createClient } from 'graphql-ws'
+import useWorkspace from '../../hooks/workspace/useWorkspace'
 import {
   getTabIndex,
-  graphqlWebSocketPath,
   LEFT_TAB_QUERY_PARAM,
-  normalizePath,
   removeEditorTab,
   RIGHT_TAB_QUERY_PARAM,
   toActiveTabQueryParam,
@@ -23,19 +20,19 @@ import {
 import { useMutableQueryParam } from '../../hooks/useQuery'
 import FileTree from './FileTree'
 
-export interface WorkspacePageProps {
-  taskId: string
-  answerId: string
-  type: FileContextType
-}
-
 const DEFAULT_RIGHT_TABS = [
   WorkspaceTabFactory.InstructionsTab(),
   WorkspaceTabFactory.ShellTab(),
+  WorkspaceTabFactory.ConsoleTab(),
   WorkspaceTabFactory.EvaluationTab()
 ]
 
-const WorkspacePage = ({ taskId, answerId, type }: WorkspacePageProps) => {
+export interface WorkspacePageProps {
+  type: FileContextType
+  onBaseUrlChange: (newBaseUrl: string) => void
+}
+
+const WorkspacePage = ({ type, onBaseUrlChange }: WorkspacePageProps) => {
   const [activeLeftTab, setActiveLeftTab] = useMutableQueryParam(
     LEFT_TAB_QUERY_PARAM,
     ''
@@ -49,6 +46,8 @@ const WorkspacePage = ({ taskId, answerId, type }: WorkspacePageProps) => {
   // These are not changeable for now
   const rightTabs = DEFAULT_RIGHT_TABS
 
+  const { baseUrl, answerId } = useWorkspace()
+
   const [startWorkspace, { data, called }] = useStartWorkspaceMutation({
     variables: {
       context: {
@@ -57,8 +56,6 @@ const WorkspacePage = ({ taskId, answerId, type }: WorkspacePageProps) => {
       }
     }
   })
-  const [baseUrl, setBaseUrl] = useState('')
-  const [graphqlWebSocketClient, setGraphqlWebSocketClient] = useState<Client>()
 
   useEffect(() => {
     if (!data && !called) {
@@ -72,16 +69,9 @@ const WorkspacePage = ({ taskId, answerId, type }: WorkspacePageProps) => {
 
   useEffect(() => {
     if (data && baseUrl.length === 0) {
-      setBaseUrl(normalizePath(data.startWorkspace.baseUrl))
+      onBaseUrlChange(data.startWorkspace.baseUrl)
     }
-  }, [data, baseUrl])
-
-  useEffect(() => {
-    if (baseUrl && !graphqlWebSocketClient) {
-      const url = graphqlWebSocketPath(baseUrl)
-      setGraphqlWebSocketClient(createClient({ url }))
-    }
-  }, [baseUrl, graphqlWebSocketClient])
+  }, [data, baseUrl, onBaseUrlChange])
 
   useEffect(() => {
     const isNotEmpty =
@@ -145,30 +135,26 @@ const WorkspacePage = ({ taskId, answerId, type }: WorkspacePageProps) => {
   }
 
   return (
-    <WorkspaceContext.Provider
-      value={{ baseUrl, graphqlWebSocketClient, taskId, answerId }}
-    >
-      <Row gutter={4} className="workspace-page">
-        <Col span={4}>
-          <FileTree onOpenFile={handleOpenFile} />
-        </Col>
-        <Col span={10}>
-          <WorkspaceTabsWrapper
-            tabs={leftTabs}
-            activeTab={activeLeftTab}
-            onTabChange={handleLeftTabChange}
-            onTabClose={handleCloseLeftTab}
-          />
-        </Col>
-        <Col span={10}>
-          <WorkspaceTabsWrapper
-            tabs={rightTabs}
-            activeTab={activeRightTab}
-            onTabChange={handleRightTabChange}
-          />
-        </Col>
-      </Row>
-    </WorkspaceContext.Provider>
+    <Row gutter={4} className="workspace-page">
+      <Col span={4}>
+        <FileTree onOpenFile={handleOpenFile} />
+      </Col>
+      <Col span={10}>
+        <WorkspaceTabsWrapper
+          tabs={leftTabs}
+          activeTab={activeLeftTab}
+          onTabChange={handleLeftTabChange}
+          onTabClose={handleCloseLeftTab}
+        />
+      </Col>
+      <Col span={10}>
+        <WorkspaceTabsWrapper
+          tabs={rightTabs}
+          activeTab={activeRightTab}
+          onTabChange={handleRightTabChange}
+        />
+      </Col>
+    </Row>
   )
 }
 

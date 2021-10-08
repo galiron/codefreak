@@ -3,7 +3,7 @@ import { CloudOutlined, FileTextOutlined } from '@ant-design/icons'
 import { Switch as AntSwitch, Tooltip } from 'antd'
 import { TagType } from 'antd/es/tag'
 import moment from 'moment'
-import { createContext, useCallback } from 'react'
+import { createContext, useCallback, useState } from 'react'
 import {
   Redirect,
   Route,
@@ -47,6 +47,13 @@ import TaskConfigurationPage from './TaskConfigurationPage'
 import { useCreateRoutes } from '../../hooks/useCreateRoutes'
 import WorkspacePage from '../../components/workspace/WorkspacePage'
 import UploadAnswerPageButton from '../../components/UploadAnswerPageButton'
+import WorkspaceRunButton from '../../components/workspace/WorkspaceRunButton'
+import { Client, createClient } from 'graphql-ws'
+import {
+  WorkspaceContext,
+  WorkspaceContextType
+} from '../../hooks/workspace/useWorkspace'
+import { graphqlWebSocketPath, normalizePath } from '../../services/workspace'
 
 export const DifferentUserContext =
   createContext<PublicUserFieldsFragment | undefined>(undefined)
@@ -64,6 +71,10 @@ const TaskPage: React.FC = () => {
   const userId = useQueryParam('user')
   const history = useHistory()
   const createRoutes = useCreateRoutes()
+
+  const [baseUrl, setBaseUrl] = useState('')
+  const [graphqlWebSocketClient, setGraphqlWebSocketClient] = useState<Client>()
+  const [runProcessId, setRunProcessId] = useState<string>()
 
   const result = useGetTaskQuery({
     variables: {
@@ -197,7 +208,12 @@ const TaskPage: React.FC = () => {
     // regular buttons to work on task for students
     buttons = [
       <UploadAnswerPageButton answerId={answer.id} />,
-      <StartEvaluationButton answerId={answer.id} type="primary" size="large" />
+      <StartEvaluationButton
+        answerId={answer.id}
+        type="primary"
+        size="large"
+      />,
+      <WorkspaceRunButton onRunProcessStarted={setRunProcessId} />
     ]
   } else if (!teacherControls) {
     // start working on task by default
@@ -254,65 +270,88 @@ const TaskPage: React.FC = () => {
     history.push(previousPath)
   }
 
+  const handleBaseUrlChange = (newBaseUrl: string) => {
+    setBaseUrl(normalizePath(newBaseUrl))
+    setGraphqlWebSocketClient(
+      createClient({
+        url: graphqlWebSocketPath(newBaseUrl),
+        lazy: false,
+        // Close the connection after one hour of inactivity
+        lazyCloseTimeout: 3_600_000
+      })
+    )
+  }
+
+  const workspaceContext: WorkspaceContextType = {
+    baseUrl,
+    taskId: task.id,
+    answerId: answer?.id ?? '',
+    graphqlWebSocketClient,
+    runProcessId
+  }
+
   return (
     <DifferentUserContext.Provider value={differentUser}>
-      <SetTitle>{task.title}</SetTitle>
-      <PageHeaderWrapper
-        title={
-          <EditableTitle
-            editable={editable}
-            title={title}
-            onChange={updater('title')}
-          />
-        }
-        tags={tags}
-        breadcrumb={createBreadcrumb(createRoutes.forTask(task))}
-        tabList={tabs}
-        tabActiveKey={subPath.get()}
-        onTabChange={onTabChange}
-        extra={
-          <>
-            {teacherControls} {buttons}
-          </>
-        }
-        onBack={goToAssignment}
-      />
-      <Switch>
-        <Route exact path={path}>
-          {editable ? (
-            <Redirect to={`${url}/configuration`} />
-          ) : (
-            <Redirect to={`${url}/ide`} />
-          )}
-        </Route>
-        <Route path={`${path}/configuration`}>
-          {editable ? (
-            <TaskConfigurationPage editable={editable} />
-          ) : (
-            <NotFoundPage />
-          )}
-        </Route>
-        <Route path={`${path}/ide`}>
-          {answer ? (
-            <div className="no-padding">
-              <AnswerBlocker
-                deadline={
-                  submission?.deadline ? moment(submission.deadline) : undefined
-                }
-              >
-                <WorkspacePage
-                  type={FileContextType.Answer}
-                  answerId={answer.id}
-                  taskId={task.id}
-                />
-              </AnswerBlocker>
-            </div>
-          ) : (
-            <NotFoundPage />
-          )}
-        </Route>
-        <Route component={NotFoundPage} />
-      </Switch>
+      <WorkspaceContext.Provider value={workspaceContext}>
+        <SetTitle>{task.title}</SetTitle>
+        <PageHeaderWrapper
+          title={
+            <EditableTitle
+              editable={editable}
+              title={title}
+              onChange={updater('title')}
+            />
+          }
+          tags={tags}
+          breadcrumb={createBreadcrumb(createRoutes.forTask(task))}
+          tabList={tabs}
+          tabActiveKey={subPath.get()}
+          onTabChange={onTabChange}
+          extra={
+            <>
+              {teacherControls} {buttons}
+            </>
+          }
+          onBack={goToAssignment}
+        />
+        <Switch>
+          <Route exact path={path}>
+            {editable ? (
+              <Redirect to={`${url}/configuration`} />
+            ) : (
+              <Redirect to={`${url}/ide`} />
+            )}
+          </Route>
+          <Route path={`${path}/configuration`}>
+            {editable ? (
+              <TaskConfigurationPage editable={editable} />
+            ) : (
+              <NotFoundPage />
+            )}
+          </Route>
+          <Route path={`${path}/ide`}>
+            {answer ? (
+              <div className="no-padding">
+                <AnswerBlocker
+                  deadline={
+                    submission?.deadline
+                      ? moment(submission.deadline)
+                      : undefined
+                  }
+                >
+                  <WorkspacePage
+                    type={FileContextType.Answer}
+                    onBaseUrlChange={handleBaseUrlChange}
+                  />
+                </AnswerBlocker>
+              </div>
+            ) : (
+              <NotFoundPage />
+            )}
+          </Route>
+          <Route component={NotFoundPage} />
+        </Switch>
+      </WorkspaceContext.Provider>
     </DifferentUserContext.Provider>
   )
 }
