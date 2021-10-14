@@ -7,14 +7,15 @@ const useGetWorkspaceFileQuery = (path: string) => {
   const fullPath = readFilePath(baseUrl, path)
   return useQuery(
     ['get-workspace-file', fullPath],
-    () =>
-      fetch(fullPath, { method: 'GET' }).then(value => {
-        if (value.ok) {
-          return value.text()
-        }
+    async () => {
+      const response = await fetch(fullPath, { method: 'GET' })
 
-        return Promise.reject('File does not exist')
-      }),
+      if (!response.ok) {
+        throw new Error('File does not exist')
+      }
+
+      return response.text()
+    },
     { enabled: baseUrl.length > 0 }
   )
 }

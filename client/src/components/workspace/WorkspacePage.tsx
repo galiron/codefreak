@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import { Col, Row } from 'antd'
 import useWorkspace from '../../hooks/workspace/useWorkspace'
 import {
-  getTabIndex,
+  indexOf,
   LEFT_TAB_QUERY_PARAM,
   removeEditorTab,
   RIGHT_TAB_QUERY_PARAM,
@@ -77,7 +77,7 @@ const WorkspacePage = ({ type, onBaseUrlChange }: WorkspacePageProps) => {
     const isNotEmpty =
       activeLeftTab !== WorkspaceTabType.EMPTY && activeLeftTab !== ''
     const isNotOpen =
-      getTabIndex(leftTabs, WorkspaceTabFactory.EditorTab(activeLeftTab)) === -1
+      indexOf(leftTabs, WorkspaceTabFactory.EditorTab(activeLeftTab)) === -1
     if (isNotEmpty && isNotOpen) {
       setLeftTabs(prevState => [
         ...prevState,
@@ -93,7 +93,7 @@ const WorkspacePage = ({ type, onBaseUrlChange }: WorkspacePageProps) => {
   const handleOpenFile = (path: string) => {
     setLeftTabs(prevState => {
       const isTabOpen =
-        getTabIndex(prevState, WorkspaceTabFactory.EditorTab(path)) !== -1
+        indexOf(prevState, WorkspaceTabFactory.EditorTab(path)) !== -1
 
       if (!isTabOpen) {
         return [...prevState, WorkspaceTabFactory.EditorTab(path)]
@@ -109,7 +109,7 @@ const WorkspacePage = ({ type, onBaseUrlChange }: WorkspacePageProps) => {
     setLeftTabs(prevState => {
       const newState = removeEditorTab(path, prevState)
 
-      const closedTabIndex = getTabIndex(
+      const closedTabIndex = indexOf(
         prevState,
         WorkspaceTabFactory.EditorTab(path)
       )

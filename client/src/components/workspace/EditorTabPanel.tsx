@@ -8,6 +8,7 @@ import { messageService } from '../../services/message'
 import useGetWorkspaceFileQuery from '../../hooks/workspace/useGetWorkspaceFileQuery'
 import useSaveWorkspaceFileMutation from '../../hooks/workspace/useSaveWorkspaceFileMutation'
 import { useEffect, useState } from 'react'
+import EmptyTabPanel from './EmptyTabPanel'
 
 type EditorTabPanelProps = {
   file: string
@@ -60,6 +61,11 @@ const EditorTabPanel = ({ file }: EditorTabPanelProps) => {
   }
 
   const loading = !isAvailable || isLoading
+
+  if (file.length === 0) {
+    messageService.error('No file path given')
+    return <EmptyTabPanel loading={loading} />
+  }
 
   return (
     <TabPanel loading={loading}>

@@ -23,7 +23,8 @@ export const extractRelativeFilePath = (path: string) => {
   const pattern = `/${FILES_API_ROUTE}/`
   const index = path.indexOf(pattern)
 
-  if (index === -1) {
+  // index === 0 when no base-url is given
+  if (index <= 0) {
     throw new Error('Invalid file path pattern')
   }
 
@@ -35,36 +36,47 @@ export const writeFilePath = (baseUrl: string) => {
   return `${baseUrl}${separator}${FILES_API_ROUTE}`
 }
 
-export const normalizePath = (path: string) => {
+export const withTrailingSlash = (path: string) => {
   const trimmedPath = path.trim()
   return trimmedPath.endsWith('/') ? trimmedPath : `${trimmedPath}/`
 }
 
 export const readFilePath = (baseUrl: string, filePath: string) => {
   const filePathSeparator = filePath.startsWith('/') ? '' : '/'
-  const normalizedBaseUrl = normalizePath(baseUrl)
+  const normalizedBaseUrl = withTrailingSlash(baseUrl)
   return `${normalizedBaseUrl}${FILES_API_ROUTE}${filePathSeparator}${filePath}`
 }
 
-export const httpToWs = (url: string) => url.replace('http', 'ws')
+export const httpToWs = (url: string) => {
+  if (!url.includes('http')) {
+    throw new Error('The url does not contain http')
+  }
+
+  return url.replace('http', 'ws')
+}
 
 export const graphqlWebSocketPath = (baseUrl: string) => {
-  const normalizedBaseUrl = normalizePath(baseUrl)
+  const normalizedBaseUrl = withTrailingSlash(baseUrl)
   return httpToWs(`${normalizedBaseUrl}${GRAPHQL_API_ROUTE}`)
 }
 
 export const processWebSocketPath = (baseUrl: string, processId: string) => {
-  const normalizedBaseUrl = normalizePath(baseUrl)
+  const normalizedBaseUrl = withTrailingSlash(baseUrl)
+
+  if (processId.length === 0) {
+    throw new Error('No valid process-id was given')
+  }
+
   return httpToWs(`${normalizedBaseUrl}${PROCESS_API_ROUTE}/${processId}`)
 }
 
 export const removeEditorTab = (path: string, tabs: WorkspaceTab[]) =>
   tabs.filter(tab => tab.type !== WorkspaceTabType.EDITOR || tab.path !== path)
 
-export const getTabIndex = (haystack: WorkspaceTab[], needle: WorkspaceTab) => {
+export const indexOf = (tabs: WorkspaceTab[], searchTab: WorkspaceTab) => {
   let tabIndex = -1
-  haystack.forEach((tab, index) => {
-    if (tab.type === needle.type && tab.path === needle.path) {
+  tabs.forEach((tab, index) => {
+    if (tab.type === searchTab.type && tab.path === searchTab.path) {
       tabIndex = index
     }
   })

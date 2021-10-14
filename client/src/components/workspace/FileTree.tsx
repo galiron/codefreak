@@ -66,7 +66,7 @@ const FileTree = ({ onOpenFile }: FileTreeProps) => {
   }
 
   return (
-    <Tabs type="card" className="workspace-tabs">
+    <Tabs type="card" className="workspace-tabs workspace-file-tree">
       <Tabs.TabPane tab="Files">
         <TabPanel withPadding loading={!isAvailable}>
           <DirectoryTree

@@ -53,7 +53,10 @@ import {
   WorkspaceContext,
   WorkspaceContextType
 } from '../../hooks/workspace/useWorkspace'
-import { graphqlWebSocketPath, normalizePath } from '../../services/workspace'
+import {
+  graphqlWebSocketPath,
+  withTrailingSlash
+} from '../../services/workspace'
 
 export const DifferentUserContext =
   createContext<PublicUserFieldsFragment | undefined>(undefined)
@@ -271,7 +274,7 @@ const TaskPage: React.FC = () => {
   }
 
   const handleBaseUrlChange = (newBaseUrl: string) => {
-    setBaseUrl(normalizePath(newBaseUrl))
+    setBaseUrl(withTrailingSlash(newBaseUrl))
     setGraphqlWebSocketClient(
       createClient({
         url: graphqlWebSocketPath(newBaseUrl),
