@@ -13,8 +13,7 @@ data class TaskDefinition(
   val description: String? = null,
   val hidden: List<String> = emptyList(),
   val protected: List<String> = emptyList(),
-  val evaluation: Map<String, EvaluationDefinition> = emptyMap(),
-  val ide: IdeDefinition? = null
+  val evaluation: Map<String, EvaluationDefinition> = emptyMap()
 ) {
   fun toEntity(assignment: Assignment?, owner: User, position: Long) = Task(
       assignment = assignment,
@@ -33,9 +32,6 @@ data class TaskDefinition(
           index
       )
     }.toMap().toMutableMap()
-    task.ideEnabled = ide?.enabled ?: true
-    task.ideArguments = ide?.cmd
-    task.ideImage = ide?.image
   }
 }
 
@@ -85,12 +81,7 @@ fun Task.toYamlDefinition() = TaskDefinition(
     description = body,
     hidden = hiddenFiles,
     protected = protectedFiles,
-    evaluation = evaluationStepDefinitions.mapValues { (_, stepDefinition) -> stepDefinition.toYamlDefinition() },
-    ide = IdeDefinition(
-        enabled = ideEnabled,
-        image = ideImage,
-        cmd = ideArguments
-    )
+    evaluation = evaluationStepDefinitions.mapValues { (_, stepDefinition) -> stepDefinition.toYamlDefinition() }
 )
 
 private fun EvaluationStepDefinition.EvaluationStepReportDefinition.toYamlDefinition() = EvaluationReportDefinition(

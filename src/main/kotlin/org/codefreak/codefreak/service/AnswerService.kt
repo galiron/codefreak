@@ -36,9 +36,6 @@ class AnswerService : BaseService() {
   private lateinit var fileService: FileService
 
   @Autowired
-  private lateinit var ideService: IdeService
-
-  @Autowired
   private lateinit var workspaceIdeService: WorkspaceIdeService
 
   @Autowired
@@ -62,7 +59,6 @@ class AnswerService : BaseService() {
 
   @Transactional
   fun deleteAnswer(answerId: UUID) {
-    ideService.removeAnswerIdeContainers(answerId)
     workspaceIdeService.deleteAnswerIde(answerId)
     answerRepository.deleteById(answerId)
 
@@ -76,13 +72,11 @@ class AnswerService : BaseService() {
     require(answer.isEditable) { "The answer is not editable anymore" }
     return fileService.writeCollectionTar(answer.id).afterClose {
       answer.updatedAt = Instant.now()
-      ideService.answerFilesUpdatedExternally(answer.id)
       workspaceIdeService.redeployAnswerFiles(answer.id)
     }
   }
 
   fun copyFilesFromTask(answer: Answer) {
-    ideService.saveTaskFiles(answer.task)
     fileService.writeCollectionTar(answer.id).use { out ->
       fileService.readCollectionTar(answer.task.id).use { `in` ->
         TarUtil.copyEntries(TarArchiveInputStream(`in`), TarUtil.PosixTarArchiveOutputStream(out), filter = {
@@ -95,7 +89,6 @@ class AnswerService : BaseService() {
   fun resetAnswerFiles(answer: Answer) {
     require(answer.isEditable) { "The answer is not editable anymore" }
     copyFilesFromTask(answer)
-    ideService.answerFilesUpdatedExternally(answer.id)
     workspaceIdeService.redeployAnswerFiles(answer.id)
   }
 
