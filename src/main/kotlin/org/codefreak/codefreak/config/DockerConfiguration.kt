@@ -6,14 +6,19 @@ import com.spotify.docker.client.DockerCertificates
 import com.spotify.docker.client.DockerCertificatesStore
 import com.spotify.docker.client.DockerClient
 import java.nio.file.Paths
+import org.aspectj.lang.ProceedingJoinPoint
+import org.aspectj.lang.annotation.Around
+import org.aspectj.lang.annotation.Aspect
 import org.codefreak.codefreak.service.DockerPublishReverseProxy
 import org.codefreak.codefreak.service.ReverseProxy
 import org.codefreak.codefreak.service.TraefikReverseProxy
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.stereotype.Component
 
 /**
  * Configure the Docker client
@@ -52,6 +57,19 @@ class DockerConfiguration {
     return builder.build()
   }
 
+  @Aspect
+  @Component
+  @ConditionalOnProperty("codefreak.docker.optional", havingValue = "true")
+  class OptionalDockerClientAspect {
+    private val log = LoggerFactory.getLogger(OptionalDockerClientAspect::class.java)
+
+    @Around("execution (* com.spotify.docker.client.DockerClient.list*(..))")
+    fun mockListCalls(joinPoint: ProceedingJoinPoint): List<Any> {
+      log.debug("Returning empty list for Docker call to ${joinPoint.signature.name}")
+      return emptyList()
+    }
+  }
+
   /**
    * Get a certificates store based on a single directory with the files:
    * - ca.pem
@@ -73,10 +91,10 @@ class DockerConfiguration {
       return Optional.absent()
     }
     return DockerCertificates.Builder()
-        .caCertPath(Paths.get(config.docker.caCertPath))
-        .clientCertPath(Paths.get(config.docker.clientCertPath))
-        .clientKeyPath(Paths.get(config.docker.clientKeyPath))
-        .build()
+      .caCertPath(Paths.get(config.docker.caCertPath))
+      .clientCertPath(Paths.get(config.docker.clientCertPath))
+      .clientKeyPath(Paths.get(config.docker.clientKeyPath))
+      .build()
   }
 
   @Bean
